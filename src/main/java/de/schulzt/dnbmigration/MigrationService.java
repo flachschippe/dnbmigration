@@ -9,14 +9,16 @@ import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.rdfhdt.hdt.triples.TripleString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import de.schulzt.dnbmigration.entities.Author;
-import de.schulzt.dnbmigration.entities.AuthorRepository;
-import de.schulzt.dnbmigration.entities.Book;
-import de.schulzt.dnbmigration.entities.BookRepository;
-import de.schulzt.dnbmigration.entities.Keyword;
-import de.schulzt.dnbmigration.entities.KeywordRepository;
+import de.schulzt.dnbdb.Author;
+import de.schulzt.dnbdb.AuthorRepository;
+import de.schulzt.dnbdb.Book;
+import de.schulzt.dnbdb.BookRepository;
+import de.schulzt.dnbdb.Keyword;
+import de.schulzt.dnbdb.KeywordRepository;
 
+@Service
 public class MigrationService {
 	@Autowired
 	private BookRepository bookRepo;
@@ -36,6 +38,9 @@ public class MigrationService {
 	private String getStringFromObject(final TripleString ts) {
 		return ts.getObject().toString().replace("^^<http://www.w3.org/2001/XMLSchema#string>", "");
 	}
+	
+	private final String[] subjectNames = {"http://d-nb.info/standards/elementset/gnd#preferredNameForThePlaceOrGeographicName",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheSubjectHeading"};
 	
 	public void migrate() throws IOException, NotFoundException {
 
@@ -61,17 +66,22 @@ public class MigrationService {
 
 					while(itKeyword.hasNext()) {
 						TripleString keyword = itKeyword.next();
-						IteratorTripleString itKeywordText = gndHdt.search(keyword.getObject().toString(), "http://d-nb.info/standards/elementset/gnd#variantNameForThePlaceOrGeographicName", "");
 						
-						while(itKeywordText.hasNext()) {
-							String keywordTitle = getStringFromObject(itKeywordText.next());
-							Keyword foundKeyword = keywordRepo.findByTitleIgnoringCase(keywordTitle);
-							if(foundKeyword == null) {
-								foundKeyword = new Keyword(keywordTitle);
-								keywordRepo.save(foundKeyword);
-							}
-							book.getKeywords().add(foundKeyword);
-						}				
+						for(String subjectName:this.subjectNames) {
+							IteratorTripleString itKeywordText = gndHdt.search(keyword.getObject().toString(), subjectName, "");
+							
+							while(itKeywordText.hasNext()) {
+								String keywordTitle = getStringFromObject(itKeywordText.next());
+								Keyword foundKeyword = keywordRepo.findByTitleIgnoringCase(keywordTitle);
+								if(foundKeyword == null) {
+									foundKeyword = new Keyword(keywordTitle);
+									keywordRepo.save(foundKeyword);
+								}
+								System.out.println(foundKeyword);
+								book.getKeywords().add(foundKeyword);
+							}	
+						}
+			
 					}
 					
 					while(itAuthor.hasNext()) {
