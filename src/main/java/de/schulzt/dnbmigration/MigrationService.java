@@ -40,7 +40,13 @@ public class MigrationService {
 	}
 	
 	private final String[] subjectNames = {"http://d-nb.info/standards/elementset/gnd#preferredNameForThePlaceOrGeographicName",
-			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheSubjectHeading"};
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheSubjectHeading",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameEntityForThePerson",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheConferenceOrEvent",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheCorporateBody",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheCorporateBody",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForThePerson",
+			"http://d-nb.info/standards/elementset/gnd#preferredNameForTheWork"};
 	
 	public void migrate() throws IOException, NotFoundException {
 
