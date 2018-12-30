@@ -15,6 +15,8 @@ import de.schulzt.dnbdb.Author;
 import de.schulzt.dnbdb.AuthorRepository;
 import de.schulzt.dnbdb.Book;
 import de.schulzt.dnbdb.BookRepository;
+import de.schulzt.dnbdb.DdClassRepository;
+import de.schulzt.dnbdb.DdClass;
 import de.schulzt.dnbdb.Keyword;
 import de.schulzt.dnbdb.KeywordRepository;
 
@@ -28,6 +30,9 @@ public class MigrationService {
 	
 	@Autowired
 	private AuthorRepository authorRepo;		
+
+	@Autowired
+	private DdClassRepository ddClassRepo;			
 	
 	@Value("${titleDatabasePath}")
 	private String titleDatabasePath;
@@ -36,7 +41,7 @@ public class MigrationService {
 	private String gndDatabasePath;	
 	
 	private String getStringFromObject(final TripleString ts) {
-		return ts.getObject().toString().replace("^^<http://www.w3.org/2001/XMLSchema#string>", "");
+		return ts.getObject().toString().replace("\"^^<http://www.w3.org/2001/XMLSchema#string>", "").replace("\"", "");
 	}
 	
 	private final String[] subjectNames = {"http://d-nb.info/standards/elementset/gnd#preferredNameForThePlaceOrGeographicName",
@@ -62,18 +67,44 @@ public class MigrationService {
 			
 			IteratorTripleString itKeyword;
 			IteratorTripleString itAuthor;
+			IteratorTripleString itDdClass;
 			try {
 				itKeyword = titleHdt.search(title.getSubject().toString(), "http://purl.org/dc/terms/subject", "");
 				itAuthor = titleHdt.search(title.getSubject().toString(), "http://purl.org/dc/terms/creator", "");
-
+				itDdClass = titleHdt.search(title.getSubject().toString(), "http://purl.org/dc/elements/1.1/subject", "");
 				if(itKeyword.hasNext()) {
 					Book book = new Book(getStringFromObject(title));
 					
+					while(itDdClass.hasNext()) {
+						String ddClassString = itDdClass.next().getObject().toString();
+						ddClassString = ddClassString.replace("\"^^<http://d-nb.info/standards/elementset/dnb#ddc-subject-category>", "");
+						ddClassString = ddClassString.replace("\"","");
+						DdClass foundClass = ddClassRepo.findByTitleIgnoringCase(ddClassString);
+
+						
+						if(foundClass == null) {
+							boolean isDdClass = true;
+							try {
+								Integer classInt = Integer.parseInt(ddClassString);
+								isDdClass = classInt >= 0 && classInt < 1000;
+							}catch (NumberFormatException e){
+								isDdClass = false;
+							}
+							if(isDdClass) {
+								foundClass = new DdClass(ddClassString);
+								ddClassRepo.save(foundClass);
+								System.out.println(foundClass);
+								
+								book.getDdClasses().add(foundClass);
+							}
+						}
+					}
 
 					while(itKeyword.hasNext()) {
 						TripleString keyword = itKeyword.next();
 						
 						for(String subjectName:this.subjectNames) {
+							
 							IteratorTripleString itKeywordText = gndHdt.search(keyword.getObject().toString(), subjectName, "");
 							
 							while(itKeywordText.hasNext()) {
@@ -110,7 +141,7 @@ public class MigrationService {
 			
 			} catch (NotFoundException e) {
 				// TODO Auto-generated catch block
-				//e.printStackTrace();
+				e.printStackTrace();
 			}	
 
 		}		
